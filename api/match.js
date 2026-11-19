@@ -13,16 +13,17 @@ export default async function handler(req,res){
  out={matches:ranked.map(c=>({campus:c.campus,fee:c.fee,why:c.state===b.state?"In your state":"Closest to your budget"})),
   objection_answer:"NIAT students earn a B.Tech from a UGC-recognised partner university; ask our counsellor for the university's approval letter.",
   next_step:"Book a free counsellor call and the NxtWave Admission Test (NAT) slot.",score:Math.min(100,40+((b.stream||"").startsWith("PCM")?20:0)+(+b.pct>=60?20:0)+(b.who==="parent"?10:0)+(b.q?10:0))};
- if(process.env.GEMINI_API_KEY){try{
-  const model=process.env.GEMINI_MODEL||"gemini-3.5-flash";
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:"POST",headers:{"x-goog-api-key":process.env.GEMINI_API_KEY,"content-type":"application/json"},
-   body:JSON.stringify({
-    systemInstruction:{parts:[{text:`You are NIAT's admissions guide. Reply ONLY with JSON {matches:[{campus,fee,why}] (max 2, choose ONLY from the campus list), objection_answer, next_step, score(0-100 purchase intent)}. Write all text in ${LANG[b.lang]||"English"}. Be honest: never promise placements or guaranteed outcomes; if unsure say a counsellor will confirm. Keep fee strings from the list. Never say a degree is definitely valid, recognised or accepted for exams or jobs; say it is awarded by the partner university and ask them to check the university approval letter with the counsellor.`}]},
-    contents:[{role:"user",parts:[{text:JSON.stringify({lead:b,campuses:CAMPUSES})}]}],
-    generationConfig:{responseMimeType:"application/json"}})});
-  const j=await r.json(); if(!j.candidates) throw new Error(JSON.stringify(j.error||j).slice(0,160));
-  const t=j.candidates[0].content.parts.map(p=>p.text||"").join("").replace(/```json|```/g,"").trim();
-  out=JSON.parse(t); mode="gemini";}catch(e){mode="rules - "+String(e.message).slice(0,160);}}
+ if(process.env.GEMINI_API_KEY){
+  const sys=`You are NIAT's admissions guide. Reply ONLY with JSON {matches:[{campus,fee,why}] (max 2, choose ONLY from the campus list), objection_answer, next_step, score(0-100 purchase intent)}. Write all text in ${LANG[b.lang]||"English"}. Be honest: never promise placements or guaranteed outcomes; if unsure say a counsellor will confirm. Keep fee strings from the list. Never say a degree is definitely valid, recognised or accepted for exams or jobs; say it is awarded by the partner university and ask them to check the university approval letter with the counsellor.`;
+  let lastErr="";
+  for(const model of [...new Set([process.env.GEMINI_MODEL||"gemini-3.8-flash","gemini-3.5-flash"])]){try{
+   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:"POST",headers:{"x-goog-api-key":process.env.GEMINI_API_KEY,"content-type":"application/json"},
+    body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:JSON.stringify({lead:b,campuses:CAMPUSES})}]}],generationConfig:{responseMimeType:"application/json"}})});
+   const j=await r.json(); if(!j.candidates) throw new Error(JSON.stringify(j.error||j).slice(0,160));
+   const t=j.candidates[0].content.parts.map(p=>p.text||"").join("").replace(/```json|```/g,"").trim();
+   out=JSON.parse(t); mode="gemini"; lastErr=""; break;}catch(e){lastErr=String(e.message).slice(0,160);}}
+  if(lastErr) mode="rules - "+lastErr;
+ }
  if(process.env.N8N_WEBHOOK_URL){try{await fetch(process.env.N8N_WEBHOOK_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...b,...out,mode,ts:new Date().toISOString()})});}catch(e){}}
  res.json({...out,mode});
 }
