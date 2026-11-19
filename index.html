@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIAT CampusMatch</title><style>
+:root{--bg:#fff;--fg:#1a1a2e;--card:#f4f6fb;--ac:#4f46e5}@media(prefers-color-scheme:dark){:root{--bg:#12121c;--fg:#eee;--card:#1e1e2e;--ac:#818cf8}}
+body{font:16px system-ui,sans-serif;background:var(--bg);color:var(--fg);max-width:640px;margin:auto;padding:16px}
+input,select,button{width:100%;padding:11px;margin:5px 0;border-radius:8px;border:1px solid #8884;font:inherit;background:var(--card);color:var(--fg);box-sizing:border-box}
+button{background:var(--ac);color:#fff;border:0;cursor:pointer}.c{background:var(--card);padding:12px;border-radius:10px;margin:10px 0}small{opacity:.7}</style></head><body>
+<h2 id="t">NIAT CampusMatch</h2><p id="s"></p>
+<select id="lang"><option value="en">English</option><option value="hi">हिन्दी</option><option value="ta">தமிழ்</option><option value="te">తెలుగు</option><option value="kn">ಕನ್ನಡ</option><option value="ml">മലയാളം</option></select>
+<input id="name" placeholder="Student name"><select id="who"><option value="student">I am the student</option><option value="parent">I am a parent</option></select>
+<select id="state"><option>Telangana</option><option>Andhra Pradesh</option><option>Karnataka</option><option>Tamil Nadu</option><option>Maharashtra</option><option>Rajasthan</option><option>Delhi NCR</option><option>Kerala</option><option>Other</option></select>
+<select id="stream"><option>PCM (Maths)</option><option>Other stream</option></select>
+<input id="pct" type="number" placeholder="12th % (expected or actual)" min="0" max="100">
+<select id="budget"><option value="2">Budget up to ₹2L / year</option><option value="3">Up to ₹3L / year</option><option value="5">₹3L+ / year</option></select>
+<input id="q" placeholder="Biggest worry? (e.g. 'is the degree valid?')"><input id="ph" placeholder="WhatsApp number" inputmode="tel">
+<label><input type="checkbox" id="ok" style="width:auto"> I agree to be contacted on WhatsApp</label>
+<button id="go">Find my campus</button><div id="out"></div>
+<script>
+const L={en:["Find the NIAT campus that fits you","Free, 1 minute. Get a parent-ready summary."],hi:["अपने लिए सही NIAT कैम्पस खोजें","मुफ़्त, 1 मिनट। अभिभावकों के लिए सारांश पाएं।"],ta:["உங்களுக்கான NIAT வளாகத்தைக் கண்டறியுங்கள்","இலவசம், 1 நிமிடம்."],te:["మీకు సరిపోయే NIAT క్యాంపస్ కనుగొనండి","ఉచితం, 1 నిమిషం."],kn:["ನಿಮಗೆ ಸೂಕ್ತವಾದ NIAT ಕ್ಯಾಂಪಸ್ ಹುಡುಕಿ","ಉಚಿತ, 1 ನಿಮಿಷ."],ml:["നിങ്ങൾക്ക് ചേരുന്ന NIAT ക്യാമ്പസ് കണ്ടെത്തൂ","സൗജന്യം, 1 മിനിറ്റ്."]};
+const $=i=>document.getElementById(i);
+function tx(){const l=L[$('lang').value];$('t').textContent=l[0];$('s').textContent=l[1]}
+$('lang').onchange=tx;tx();
+$('go').onclick=async()=>{
+ if(!$('ok').checked||!/^\d{10}$/.test($('ph').value.replace(/\D/g,'').slice(-10)))return alert('Enter a 10-digit WhatsApp number and tick consent');
+ $('out').innerHTML='<div class=c>Matching…</div>';
+ const b={};['name','who','state','stream','pct','budget','q','ph','lang'].forEach(k=>b[k]=$(k).value);
+ try{const r=await fetch('/api/match',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();
+ if(!r.ok)throw 0;
+ $('out').innerHTML=d.matches.map(m=>`<div class=c><b>${m.campus}</b><br>${m.why}<br><small>Indicative fee ${m.fee} — confirm on niatindia.com</small></div>`).join('')+
+ `<div class=c><b>Your worry</b><br>${d.objection_answer}</div><div class=c><b>Next step</b><br>${d.next_step}</div><small>Lead score ${d.score}/100 · ${d.mode}</small>`}
+ catch(e){$('out').innerHTML='<div class=c>Something went wrong. Try again.</div>'}};
+</script></body></html>
