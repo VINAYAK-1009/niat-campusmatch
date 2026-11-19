@@ -20,9 +20,12 @@ export default async function handler(req,res){
     systemInstruction:{parts:[{text:`You are NIAT's admissions guide. Reply ONLY with JSON {matches:[{campus,fee,why}] (max 2, choose ONLY from the campus list), objection_answer, next_step, score(0-100 purchase intent)}. Write all text in ${LANG[b.lang]||"English"}. Be honest: never promise placements or guaranteed outcomes; if unsure say a counsellor will confirm. Keep fee strings from the list.`}]},
     contents:[{role:"user",parts:[{text:JSON.stringify({lead:b,campuses:CAMPUSES})}]}],
     generationConfig:{responseMimeType:"application/json"}})});
-  const j=await r.json();
+   const j=await r.json(); 
+  if(!j.candidates) throw new 
+  Error(JSON.stringify(j.error||j).slice(0,160))
+  ;
   const t=j.candidates[0].content.parts.map(p=>p.text||"").join("").replace(/```json|```/g,"").trim();
-  out=JSON.parse(t); mode="gemini";}catch(e){}}
+  out=JSON.parse(t); mode="gemini";}catch(e){mode="rules - "+String(e.message).slice(0,160);}}
  if(process.env.N8N_WEBHOOK_URL){try{await fetch(process.env.N8N_WEBHOOK_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...b,...out,mode,ts:new Date().toISOString()})});}catch(e){}}
  res.json({...out,mode});
 }
