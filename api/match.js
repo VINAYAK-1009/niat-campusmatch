@@ -17,13 +17,10 @@ export default async function handler(req,res){
   const model=process.env.GEMINI_MODEL||"gemini-3.5-flash";
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:"POST",headers:{"x-goog-api-key":process.env.GEMINI_API_KEY,"content-type":"application/json"},
    body:JSON.stringify({
-    systemInstruction:{parts:[{text:`You are NIAT's admissions guide. Reply ONLY with JSON {matches:[{campus,fee,why}] (max 2, choose ONLY from the campus list), objection_answer, next_step, score(0-100 purchase intent)}. Write all text in ${LANG[b.lang]||"English"}. Be honest: never promise placements or guaranteed outcomes; if unsure say a counsellor will confirm. Keep fee strings from the list.`}]},
+    systemInstruction:{parts:[{text:`You are NIAT's admissions guide. Reply ONLY with JSON {matches:[{campus,fee,why}] (max 2, choose ONLY from the campus list), objection_answer, next_step, score(0-100 purchase intent)}. Write all text in ${LANG[b.lang]||"English"}. Be honest: never promise placements or guaranteed outcomes; if unsure say a counsellor will confirm. Keep fee strings from the list. Never say a degree is definitely valid, recognised or accepted for exams or jobs; say it is awarded by the partner university and ask them to check the university approval letter with the counsellor.`}]},
     contents:[{role:"user",parts:[{text:JSON.stringify({lead:b,campuses:CAMPUSES})}]}],
     generationConfig:{responseMimeType:"application/json"}})});
-   const j=await r.json(); 
-  if(!j.candidates) throw new 
-  Error(JSON.stringify(j.error||j).slice(0,160))
-  ;
+  const j=await r.json(); if(!j.candidates) throw new Error(JSON.stringify(j.error||j).slice(0,160));
   const t=j.candidates[0].content.parts.map(p=>p.text||"").join("").replace(/```json|```/g,"").trim();
   out=JSON.parse(t); mode="gemini";}catch(e){mode="rules - "+String(e.message).slice(0,160);}}
  if(process.env.N8N_WEBHOOK_URL){try{await fetch(process.env.N8N_WEBHOOK_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...b,...out,mode,ts:new Date().toISOString()})});}catch(e){}}
